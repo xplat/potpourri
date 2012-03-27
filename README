@@ -1,6 +1,14 @@
+* AltEquality.agda - A sort of Church-encoded propositional equality.
+
+* Altivec.agda - Vecs with eta.
+
+* CantCountCantor.agda - 2^&#x2135;₀ ≠ &#x2135;₀.
+
 * Denum.agda - Equality and ordering from an injection into the naturals.
 
 * Golforth.hs - Point-free Haskell the Forth way.
+
+* patmv.pl - Rename multiple files with regex replacements.
 
 * PatriciaTrie.agda - Bitvector-indexed tries.
 
