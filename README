@@ -13,3 +13,7 @@
 * PatriciaTrie.agda - Bitvector-indexed tries.
 
   A response to http://www.reddit.com/r/dependent_types/comments/qmlml/patricia_trie_challenge/ .
+
+* Trie.hs - Is Haskell more readable than python?
+
+  A response to some other reddit post comparing readability of Haskell and python in the case of tries.
