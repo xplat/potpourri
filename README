@@ -8,6 +8,10 @@
 
 * Golforth.hs - Point-free Haskell the Forth way.
 
+* IxNat.agda - A small sample of what first-class ornaments would be like?
+
+* IxNatEx.agda - IxNat.agda in action: naturals indexed by parity, Even and Odd.
+
 * patmv.pl - Rename multiple files with regex replacements.
 
 * PatriciaTrie.agda - Bitvector-indexed tries.
