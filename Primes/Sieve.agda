@@ -1,4 +1,6 @@
 -- Sieve of Erasothenes!
+--
+-- Mainly following M.E. O'Neill "The Genuine Sieve of Eratosthenes"
 
 module Sieve where
 
