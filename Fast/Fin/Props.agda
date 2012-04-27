@@ -7,6 +7,7 @@
 
 module Fast.Fin.Props where
 
+open import Algebra
 open import Fast.Equality
 open import Fast.Fin
 open import Fast.Nat as N
@@ -24,6 +25,8 @@ open import Relation.Binary.PropositionalEquality as PropEq
   using (_≡_; refl; cong; subst)
 open import Category.Functor
 open import Category.Applicative
+
+module NR = CommutativeSemiring N.commutativeSemiring
 
 ------------------------------------------------------------------------
 -- Properties
@@ -76,54 +79,38 @@ bounded (fin value slack fits) = N.le slack fits
 
 prop-toℕ-≤ : ∀ {n} (x : Fin n) → toℕ x ℕ≤ N.pred n
 prop-toℕ-≤ (fin value slack fits) = N.le slack (hcong N.pred fits)
-{-
+
 nℕ-ℕi≤n : ∀ n i → n ℕ-ℕ i ℕ≤ n
-nℕ-ℕi≤n n       zero     = begin n ∎
-nℕ-ℕi≤n zero    (suc ())
-nℕ-ℕi≤n (suc n) (suc i)  = begin
-  n ℕ-ℕ i ≤⟨ nℕ-ℕi≤n n i ⟩
-  n       ≤⟨ N.n≤1+n n ⟩
-  suc n   ∎
+nℕ-ℕi≤n n i = N.n∸m≤n (toℕ i) n
 
 inject-lemma : ∀ {n} {i : Fin n} (j : Fin′ i) →
-               toℕ (inject j) ≡ toℕ j
-inject-lemma {i = zero}  ()
-inject-lemma {i = suc i} zero    = refl
-inject-lemma {i = suc i} (suc j) = cong suc (inject-lemma j)
--}
+               toℕ (inject {i = i} j) ≡ toℕ j
+inject-lemma j = refl
+
 inject+-lemma : ∀ {m} n (i : Fin m) → toℕ i ≡ toℕ (inject+ n i)
 inject+-lemma n i = refl
-{-
-inject₁-lemma : ∀ {m} (i : Fin m) → toℕ (inject₁ i) ≡ toℕ i
-inject₁-lemma zero    = refl
-inject₁-lemma (suc i) = cong suc (inject₁-lemma i)
 
-inject≤-lemma : ∀ {m n} (i : Fin m) (le : m ℕ≤ n) →
-                toℕ (inject≤ i le) ≡ toℕ i
-inject≤-lemma zero    (N.s≤s le) = refl
-inject≤-lemma (suc i) (N.s≤s le) = cong suc (inject≤-lemma i le)
+inject₁-lemma : ∀ {m} (i : Fin m) → toℕ (inject₁ i) ≡ toℕ i
+inject₁-lemma i = refl
+
+inject≤-lemma : ∀ {m n} (i : Fin m) (m≤n : m ℕ≤ n) →
+                toℕ (inject≤ i m≤n) ≡ toℕ i
+inject≤-lemma _ (N.le _ refl) = refl
 
 ≺⇒<′ : _≺_ ⇒ N._<′_
 ≺⇒<′ (n ≻toℕ i) = N.≤⇒≤′ (bounded i)
 
 <′⇒≺ : N._<′_ ⇒ _≺_
-<′⇒≺ {n} N.≤′-refl    = subst (λ i → i ≺ suc n) (to-from n)
-                              (suc n ≻toℕ fromℕ n)
-<′⇒≺ (N.≤′-step m≤′n) with <′⇒≺ m≤′n
-<′⇒≺ (N.≤′-step m≤′n) | n ≻toℕ i =
-  subst (λ i → i ≺ suc n) (inject₁-lemma i) (suc n ≻toℕ (inject₁ i))
+<′⇒≺ {m} (N.le k) = _ ≻toℕ (fin m k refl)
 
 toℕ-raise : ∀ {m} n (i : Fin m) → toℕ (raise n i) ≡ n ℕ+ toℕ i
-toℕ-raise zero    i = refl
-toℕ-raise (suc n) i = cong suc (toℕ-raise n i)
+toℕ-raise n i = refl
 
 fromℕ≤-toℕ : ∀ {m} (i : Fin m) (i<m : toℕ i ℕ< m) → fromℕ≤ i<m ≡ i
-fromℕ≤-toℕ zero    (s≤s z≤n)       = refl
-fromℕ≤-toℕ (suc i) (s≤s (s≤s m≤n)) = cong suc (fromℕ≤-toℕ i (s≤s m≤n))
+fromℕ≤-toℕ i i<m = Fin-unique (fromℕ≤ i<m) i refl
 
 toℕ-fromℕ≤ : ∀ {m n} (m<n : m ℕ< n) → toℕ (fromℕ≤ m<n) ≡ m
-toℕ-fromℕ≤ (s≤s z≤n)       = refl
-toℕ-fromℕ≤ (s≤s (s≤s m<n)) = cong suc (toℕ-fromℕ≤ (s≤s m<n))
+toℕ-fromℕ≤ m<n = refl
 
 ------------------------------------------------------------------------
 -- Operations
@@ -137,8 +124,8 @@ i +′ j = inject≤ (i + j) (N._+-mono_ (prop-toℕ-≤ i) ≤-refl)
 -- reverse {n} "i" = "n ∸ 1 ∸ i".
 
 reverse : ∀ {n} → Fin n → Fin n
-reverse {zero}  ()
-reverse {suc n} i  = inject≤ (n ℕ- i) (N.n∸m≤n (toℕ i) (suc n))
+reverse (fin value slack fits)
+  = fin slack value $ htrans (hcong N.suc $ NR.+-comm slack value) $ fits
 
 -- If there is an injection from a set to a finite set, then equality
 -- of the set can be decided.
@@ -158,13 +145,15 @@ sequence {F} RA = helper _ _
   open RawApplicative RA
 
   helper : ∀ n (P : Fin n → Set) → (∀ i → F (P i)) → F (∀ i → P i)
-  helper zero    P ∀iPi = pure (λ())
-  helper (suc n) P ∀iPi =
+  helper N.zero    P ∀iPi = pure (λ{(fin _ _ ())})
+  helper (N.suc n) P ∀iPi =
     combine <$> ∀iPi zero ⊛ helper n (λ n → P (suc n)) (∀iPi ∘ suc)
     where
     combine : P zero → (∀ i → P (suc i)) → ∀ i → P i
-    combine z s zero    = z
-    combine z s (suc i) = s i
+    combine z s (fin N.zero    slack fits) = hsubst P (Fin-unique _ _ refl) z
+    combine z s (fin (N.suc i) slack fits)
+      = hsubst P (Fin-unique _ _ refl)
+                 (s (fin i slack (hcong N.pred fits)))
 
 private
 
@@ -176,4 +165,3 @@ private
                F (∀ i → P i) → ∀ i → F (P i)
   sequence⁻¹ RF F∀iPi i = (λ f → f i) <$> F∀iPi
     where open RawFunctor RF
--}
