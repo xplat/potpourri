@@ -1,8 +1,10 @@
 module Fast.Nat.Induction where
 
--- Induction.Nat
+open import Fast.Equality
+open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Fast.Nat
+open import Fast.Nat.Properties using (pred-mono)
 open import Induction
 open import Induction.WellFounded as WF
 import Induction.Nat
@@ -94,7 +96,3 @@ private
     ; (suc (suc n)) rec → suc (rec n (≤′-step ≤′-refl))
     }
 -}
-
--- Data.Nat.DivMod
-
-

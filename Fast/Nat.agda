@@ -60,7 +60,7 @@ data _≤′_ (m : ℕ) : ℕ → Set where
   le : ∀ k → m ≤′ (m + k)
 
 _<′_ : RelN
-m <′ n = suc m < n
+m <′ n = suc m ≤′ n
 
 _≥′_ : RelN
 _≥′_ = flip _≤′_
