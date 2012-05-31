@@ -103,9 +103,7 @@ _>=_ : ℕ → ℕ → Bool
 _>=_ = flip _<=_
 
 -- auxiliary functions for Agda
--- spec : (\k m n j -> k + div (n + m - j) (m + 1)
--- XXX does this technically quite fit the spec as stated for j > n + m ? --
---   if not, how much is this a problem?  is the spec buggy or is this?
+-- spec : (\k m n j -> k + div (n + m - j `min` 0) (m + 1)
 divSucAux : (k m n j : ℕ) → ℕ
 divSucAux k m zero j = k
 divSucAux k m (suc n) zero = divSucAux (suc k) m n m
@@ -142,9 +140,6 @@ m ⊓ n with n <! m
 
 0≢1+n : ∀ {n} → 0 ≢ suc n
 0≢1+n ()
-
-oh-noes : ⊥
-oh-noes = 0≢1+n {divSucAux 0 0 0 1} refl
 
 ==-refl : ∀ n → (n == n) ≡ true
 ==-refl zero = refl
