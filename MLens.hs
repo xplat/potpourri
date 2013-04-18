@@ -1,5 +1,7 @@
 module MLens where
 
+-- based on https://gist.github.com/arkeet/4295507 by arkeet
+
 import Control.Applicative
 import Control.Lens
 import Control.Lens.Internal
