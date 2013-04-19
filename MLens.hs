@@ -1,6 +1,9 @@
 {-# LANGUAGE Rank2Types #-}
 module MLens where
 
+-- Lenses of a sort that access the implicit state or other data kept by a
+-- monad.
+
 -- based on https://gist.github.com/arkeet/4295507 by arkeet
 
 import Control.Applicative
@@ -14,7 +17,8 @@ import Data.IORef
 import Data.Pointed
 import Data.Traversable
 import Data.Tuple
- 
+
+-- A container like 'Traversable', but promises to contain at most one element. 
 class (Traversable t) => Optional t where
   inspect :: (Functor f, Pointed f) => (a -> f b) -> (t a -> f (t b))
   inspect f = ifApplicableP . fmap f
@@ -37,8 +41,9 @@ instance Traversable (Accessor r) where
 instance Optional (Accessor r) where
   ifApplicableP = point . coerce
 
--- types
-
+-- Lenses into implicit data, can be both read and written, and changes are
+-- preserved through binds.
+--
 -- 1) You get back what you put in:
 --
 -- @
@@ -59,6 +64,8 @@ instance Optional (Accessor r) where
 type MLens m a b = forall f. Optional f => (a -> f b) -> m (f ()) 
 type MLens' m a = MLens m a a
 
+-- Setters of implicit data.  Changes are again preserved across binds.
+--
 -- 1) identity law:
 --
 -- @
@@ -74,24 +81,31 @@ type MSetter m a b = forall f. Settable f => (a -> f b) -> m (f ())
 type MSetter' m a = MSetter m a a
 type AMSetter m a b u = (a -> Mutator b) -> m (Mutator u)
 
+-- Getters of implicit data.  Similar to how plain getters are plain functions,
+-- these are basically the same as arbitrary actions of type 'm a'.
 type MGetter m a = forall f u. Gettable f => (a -> f a) -> m (f u)
 type MGetting r m a u = (a -> Accessor r a) -> m (Accessor r u)
 
--- note: basically all this 'u' stuff could be got rid of at the expense of
---       losing returnL
+-- NOTE: Basically all this 'u' stuff could be got rid of at the expense of
+--       losing 'returnL'.
 
+-- Monadic form of 'views'.
 mviews :: Monad m => (a -> r) -> MGetting r m a u -> m r
 mviews f l = liftM runAccessor $ l (Accessor . f)
- 
+
+-- Monadic form of 'view'. 
 mview :: Monad m => MGetting a m a u -> m a
 mview l = mviews id l
- 
+
+-- Monadic form of 'over'. 
 mover :: Monad m => AMSetter m a b u -> (a -> b) -> m u
 mover l f = liftM runMutator $ l (Mutator . f)
 
+-- Monadic form of 'set'.
 mset :: Monad m => AMSetter m a b u -> b -> m u
 mset l x = mover l (const x)
 
+-- Infix form of 'mviews'.  Named for its similarity to application and '<$>'.
 infixr 4 >$
 (>$) :: Monad m => (a -> r) -> MGetting r m a u -> m r
 (>$) = mviews
@@ -109,7 +123,7 @@ infixr 4 >.=
 returnL :: (Monad m, Functor f) => s -> (s -> f t) -> m (f t)
 returnL a k = return (k a)
 
--- i kind of want to call this one 'this'.
+-- I kind of want to call this one 'this'.
 stateL :: (MonadState s m, Optional f) => (s -> f s) -> m (f ())
 stateL k = do
   s <- get
@@ -121,6 +135,11 @@ stateL k = do
 readerL :: (MonadReader a m, Gettable f) => (a -> f b) -> m (f u)
 readerL k = reader $ \r -> coerce (k r)
 
+-- This only truly follows the MLens laws if the underlying IORef is only
+-- visible to a single thread--otherwise, euqivalent sequences can be
+-- distinguished by intermediate writes they make.  If you really need a
+-- lens into state visible from multiple threads at once, probably STM is
+-- your best way to do it.
 iorefL :: (MonadIO m, Optional f) => IORef s -> (s -> f s) -> m (f ())
 iorefL ref = liftIO . atomicModifyIORef ref . (swap .) . runState . stateL
 
