@@ -20,31 +20,9 @@ import Data.Pointed
 import Data.Traversable
 import Data.Tuple
 
--- A container like 'Traversable', but promises to contain at most one element. 
-class (Traversable t) => Optional t where
-  inspect :: (Functor f, Pointed f) => (a -> f b) -> (t a -> f (t b))
-  inspect f = ifApplicableP . fmap f
-
-  ifApplicableP :: (Functor f, Pointed f) => t (f a) -> f (t a)
-  ifApplicableP = inspect id
-
-  ifApplicableM :: (Monad m) => t (m a) -> m (t a)
-  ifApplicableM = unwrapMonad . ifApplicableP . fmap WrapMonad
-
-instance Optional Mutator where
-  ifApplicableP = fmap Mutator . runMutator
-
-instance Foldable (Accessor r) where
-  foldr _ z _ = z
-
-instance Traversable (Accessor r) where
-  sequenceA = pure . coerce
-
-instance Optional (Accessor r) where
-  ifApplicableP = point . coerce
-
+-- A functor that would also be an endofunctor of Kleisli m.
+-- Just what you need in the constraints for an ELens!
 class (Monad m, Functor f) => Effectual m f | f -> m where
-  -- don't know what's actually needed here
   lbind :: m a -> (a -> f b) -> f b
   rbind :: f a -> (a -> m b) -> f b
 
@@ -54,7 +32,8 @@ instance Monad m => Effectual m (WrappedMonad m) where
 
 instance Monad m => Effectual m (Effect m r) where
   lbind m f = effective $ m >>= (ineffective . f)
-  rbind = const . (effective . ineffective) -- could just as well be unsafeCoerce
+  rbind = const . (effective . ineffective)
+          -- could just as well be unsafeCoerce
 
 -- Lenses into implicit data, can be both read and written, and changes are
 -- preserved through binds.
@@ -62,22 +41,22 @@ instance Monad m => Effectual m (Effect m r) where
 -- 1) You get back what you put in:
 --
 -- @
--- 'ELens.eset' l b >> 'ELens.eview' l  returns  b
+-- 'ELens.eset' l b x >>= 'ELens.eview' l  returns  b
 -- @
 --
 -- 2) Putting back what you got doesn't change anything:
 --
 -- @
--- 'ELens.eview' l >>= 'ELens.eset' l  ~~~  return ()
+-- 'ELens.eview' l x >>= 'ELens.eset' l x  ~~~  return x
 -- @
 --
 -- 3) Setting twice is the same as setting once:
 --
 -- @
--- 'ELens.eset' l b >> 'ELens.eset' l c  ~~~  'ELens.set' l c
+-- 'ELens.eset' l b x >>= 'ELens.eset' l c  ~~~  'ELens.set' l c x
 -- @
--- type ELens m s t a b = forall f. Optional f => (a -> f b) -> m (f ()) 
--- type ELens' m s a = Simple (ELens m) s a
+type ELens m s t a b = forall f. Effectual m f => (a -> f b) -> m (f ()) 
+type ELens' m s a = Simple (ELens m) s a
 
 -- Setters of implicit data.  Changes are again preserved across binds.
 --
@@ -92,17 +71,19 @@ instance Monad m => Effectual m (Effect m r) where
 -- @
 -- 'ELens.eover' l f >> 'ELens.eover' l g  ~~~  'ELens.eover' l (g . f)
 -- @
+--
+-- XXX the constraint 'f ~ WrappedMonad m' should be loosened enough to allow
+-- Mutator and Identity as f when m is Identity
 type ESetter m s t a b = forall f. (f ~ WrappedMonad m) => (a -> f b) -> m (f ())
 type ESetter' m s a = Simple (ESetter m) s a
 type AESetter m s t a b = LensLike (WrappedMonad m) s t a b
 
 -- Getters of implicit data.  Similar to how plain getters are plain functions,
--- these are basically the same as arbitrary actions of type 'm a'.
+-- these are basically the same as arbitrary Kleisli arrows of type 's -> m a'.
 type EGetter m s a = Action m s a
 type EGetting m r s t a b = Acting m r s t a b
 
--- NOTE: Basically all this 'u' stuff could be got rid of at the expense of
---       losing 'returnL'.
+
 
 -- Monadic form of 'views'.
 eviews :: Monad m => (a -> r) -> EGetting m r s t a b -> (s -> m r)
@@ -120,6 +101,8 @@ eover l f = liftM unwrapMonad $ l (WrapMonad . return . f)
 eset :: Monad m => AESetter m s t a b -> b -> (s -> m t)
 eset l x = eover l (const x)
 
+
+
 -- Infix form of 'eview'.
 infixr 4 ^!.
 (^!.) :: Monad m => s -> EGetting m a s t a b -> m a
@@ -134,11 +117,6 @@ infixr 4 !.~
 (!.~) = eset
  
 
-{-
--- NOTE: this is interesting, but it's not an ELens 
-returnL :: (Monad m, Functor f) => s -> (s -> f t) -> m (f t)
-returnL a k = return (k a)
--}
 
 -- I kind of want to call this one 'this'.
 stateL :: (MonadState a m, Effectual m f) => (a -> f a) -> (s -> f s)
@@ -147,7 +125,6 @@ stateL k = \x -> get `lbind` (\v -> k v `rbind` (\r -> put r >> return x))
 -- and this one 'env'.
 readerL :: (MonadReader a m) => EGetter m s a
 readerL k = effective . (\_ -> ask >>= (ineffective . k))
--- reader $ \r -> coerce (k r)
 
 -- This only truly follows the ELens laws if the underlying IORef is only
 -- visible to a single thread--otherwise, euqivalent sequences can be
@@ -159,6 +136,9 @@ iorefL ref = \k x -> liftIO (readIORef ref) `lbind`
                      (\v -> k v `rbind`
                      (\r -> liftIO (writeIORef ref r) >> return x))
   -- liftIO . atomicModifyIORef ref . (swap .) . runState . stateL
+
+
+
  
 testReturn = runIdentity $ do
   x <- (0,'a') ^!. _1
