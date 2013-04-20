@@ -74,7 +74,7 @@ type ELens' m s a = Simple (ELens m) s a
 --
 -- XXX the constraint 'f ~ WrappedMonad m' should be loosened enough to allow
 -- Mutator and Identity as f when m is Identity
-type ESetter m s t a b = forall f. (f ~ WrappedMonad m) => (a -> f b) -> m (f ())
+type ESetter m s t a b = forall f. (f ~ WrappedMonad m) => (a -> f b) -> (s -> f b)
 type ESetter' m s a = Simple (ESetter m) s a
 type AESetter m s t a b = LensLike (WrappedMonad m) s t a b
 
