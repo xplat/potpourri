@@ -6,6 +6,8 @@
 
 * Denum.agda - Equality and ordering from an injection into the naturals.
 
+* extract-urls.pl - extract urls from chat logs
+
 * Golforth.hs - Point-free Haskell the Forth way.
 
 * IxNat.agda - A small sample of what first-class ornaments would be like?
